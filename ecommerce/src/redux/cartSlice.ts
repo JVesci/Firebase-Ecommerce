@@ -23,7 +23,8 @@ const cartSlice = createSlice({
                 state.items.push({ ...product, quantity: 1 })
             }
         },
-        removeFromCart(state, action: PayloadAction<number>) {
+        // Updated to expect string ID
+        removeFromCart(state, action: PayloadAction<string>) {
             const id = action.payload
             const index = state.items.findIndex(item => item.id === id)
             if (index !== -1) {

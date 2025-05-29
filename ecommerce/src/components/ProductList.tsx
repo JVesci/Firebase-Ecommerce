@@ -1,109 +1,101 @@
-import { useQuery } from '@tanstack/react-query'
-import axios from 'axios'
-import type { Product } from '../types'
-import { useAppDispatch } from '../redux/hooks'
-import { addToCart } from '../redux/cartSlice'
-import { useState } from 'react'
+import { useEffect, useState } from 'react';
+import { fetchProducts } from '../services/firebaseProductService';
+import { useAppDispatch } from '../redux/hooks';
+import { addToCart } from '../redux/cartSlice';
+
+type Product = {
+    id: string;
+    title: string;
+    description: string;
+    price: number;
+    quantity: number;
+    category: string;
+    image?: string;
+};
 
 const ProductList = () => {
-    const dispatch = useAppDispatch()
-    const [category, setCategory] = useState('')
-    const [showToast, setShowToast] = useState(false)
+    const [products, setProducts] = useState<Product[]>([]);
+    const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+    const dispatch = useAppDispatch();
 
-    const { data: categories } = useQuery({
-        queryKey: ['categories'],
-        queryFn: async () => {
-            const res = await axios.get<string[]>('https://fakestoreapi.com/products/categories')
-            return res.data
-        }
-    })
-
-    const { data: products, isLoading } = useQuery({
-        queryKey: ['products', category],
-        queryFn: async () => {
-            const url = category
-                ? `https://fakestoreapi.com/products/category/${category}`
-                : 'https://fakestoreapi.com/products'
-            const res = await axios.get<Product[]>(url)
-            return res.data
-        }
-    })
+    useEffect(() => {
+        const loadProducts = async () => {
+            const data = await fetchProducts();
+            const products: Product[] = data.map((item: any) => ({
+                id: item.id,
+                title: item.title ?? '',
+                description: item.description ?? '',
+                price: item.price ?? 0,
+                quantity: item.quantity ?? 0,
+                category: item.category ?? '',
+                image: item.image ?? undefined,
+            }));
+            setProducts(products);
+        };
+        loadProducts();
+    }, []);
 
     const handleAddToCart = (product: Product) => {
-        dispatch(addToCart(product))
-        setShowToast(true)
-        setTimeout(() => setShowToast(false), 2000)
-    }
-
-    const renderStars = (rating: number) => {
-        const fullStars = Math.floor(rating)
-        const hasHalfStar = rating % 1 >= 0.5
-        const stars = []
-
-        for (let i = 0; i < fullStars; i++) {
-            stars.push(<i key={`full-${i}`} className="bi bi-star-fill text-warning"></i>)
-        }
-
-        if (hasHalfStar) {
-            stars.push(<i key="half" className="bi bi-star-half text-warning"></i>)
-        }
-
-        while (stars.length < 5) {
-            stars.push(<i key={`empty-${stars.length}`} className="bi bi-star text-warning"></i>)
-        }
-
-        return stars
-    }
-
-    if (isLoading) return <p>Loading...</p>
+        dispatch(addToCart(product));
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 2000); // hide after 2 seconds
+    };
 
     return (
-        <div className="container my-4">
-            <div className="mb-4">
-                <select className="form-select" onChange={e => setCategory(e.target.value)} value={category}>
-                    <option value=''>All</option>
-                    {categories?.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                </select>
-            </div>
+        <div className="container my-4 position-relative">
+            {showSuccessMessage && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        color: 'white',
+                        padding: '1rem 2rem',
+                        borderRadius: '8px',
+                        zIndex: 1050,
+                        fontWeight: 'bold',
+                        fontSize: '1.25rem',
+                        textAlign: 'center',
+                    }}
+                >
+                    Successfully added to cart!
+                </div>
+            )}
 
             <div className="row">
-                {products?.map(product => (
-                    <div key={product.id} className="col-md-4 mb-4">
-                        <div className="card h-100 shadow-sm">
-                            <img
-                                src={product.image}
-                                className="card-img-top p-3"
-                                alt={product.title}
-                                style={{ height: '200px', objectFit: 'contain' }}
-                            />
+                {products.map((product) => (
+                    <div className="col-md-4 mb-4" key={product.id}>
+                        <div className="card h-100">
+                            {product.image && (
+                                <img
+                                    src={product.image}
+                                    className="card-img-top"
+                                    alt={product.title}
+                                    style={{ objectFit: 'cover', height: '200px' }}
+                                />
+                            )}
                             <div className="card-body d-flex flex-column">
                                 <h5 className="card-title">{product.title}</h5>
-                                <p className="card-text">${product.price.toFixed(2)}</p>
-                                <p className="card-text text-muted">{product.category}</p>
-                                <p className="card-text small">{product.description}</p>
-                                <p className="card-text">
-                                    {renderStars(product.rating.rate)}
-                                    <br />
-                                    <span className="text-muted small">({product.rating.count} remaining)</span>
-                                </p>
-                                <button className="btn btn-primary mt-auto" onClick={() => handleAddToCart(product)}>
-                                    Add to Cart
+                                <p className="card-text">{product.description}</p>
+                                <p><strong>Price:</strong> ${product.price}</p>
+                                <p><strong>Quantity:</strong> {product.quantity}</p>
+                                <p><strong>Category:</strong> {product.category}</p>
+                                <button
+                                    className="btn btn-primary mt-auto"
+                                    onClick={() => handleAddToCart(product)}
+                                    disabled={product.quantity === 0}
+                                >
+                                    {product.quantity === 0 ? "Out of Stock" : "Add to Cart"}
                                 </button>
                             </div>
                         </div>
                     </div>
                 ))}
             </div>
-
-            {showToast && (
-                <div className="toast-center">
-                    Item added to cart!
-                </div>
-            )}
         </div>
-    )
-}
+    );
+};
 
-export default ProductList
+export default ProductList;

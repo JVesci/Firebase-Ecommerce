@@ -1,11 +1,10 @@
 module.exports = {
-    preset: 'ts-jest',
+    preset: 'ts-jest/presets/js-with-ts',
     testEnvironment: 'jsdom',
-    setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'], // updated extension
-    globals: {
-        'ts-jest': {
-            tsconfig: 'tsconfig.json', // or 'tsconfig.test.json' if you use a separate one
-        },
+    setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
+    transform: {
+        '^.+\\.(ts|tsx)$': ['ts-jest', {
+            tsconfig: 'tsconfig.json',
+        }],
     },
-    moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
 };
